@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Setup Development Project
 if [ "$#" -ne 1 ]; then
     echo "Usage:"

@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Delete all Homework Projects
 if [ "$#" -ne 1 ]; then
     echo "Usage:"

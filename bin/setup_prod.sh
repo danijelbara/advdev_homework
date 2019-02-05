@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Setup Production Project (initial active services: Green)
 if [ "$#" -ne 1 ]; then
     echo "Usage:"

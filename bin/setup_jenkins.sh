@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Setup Jenkins Project
 if [ "$#" -ne 3 ]; then
     echo "Usage:"
