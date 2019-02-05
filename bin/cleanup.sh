@@ -9,5 +9,5 @@ fi
 GUID=$1
 echo "Removing all Homework Projects for GUID=$GUID"
 oc delete project $GUID-jenkins
-oc delete project $GUID-tasks-dev
-oc delete project $GUID-tasks-prod
+oc delete project $GUID-parks-dev
+oc delete project $GUID-parks-prod

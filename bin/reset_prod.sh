@@ -8,11 +8,11 @@ if [ "$#" -ne 1 ]; then
 fi
 
 GUID=$1
-echo "Resetting Tasks Production Environment in project ${GUID}-tasks-prod to Green Services"
+echo "Resetting parks Production Environment in project ${GUID}-parks-prod to Green Services"
 
 # Parksmap
 # Set route to Green Service
-oc patch route tasks -n ${GUID}-tasks-prod -p '{"spec":{"to":{"name":"tasks-green"}}}'
+oc patch route parks -n ${GUID}-parks-prod -p '{"spec":{"to":{"name":"parks-green"}}}'
 
 # Add echo statement so that the script succeeds even if the patch didn't do anything
 echo "Updated"
