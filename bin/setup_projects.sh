@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Create Homework Projects with GUID prefix.
 # When FROM_JENKINS=true then project ownership is set to USER
 # Set FROM_JENKINS=false for testing outside of the Grading Jenkins
@@ -15,15 +14,15 @@ FROM_JENKINS=$3
 
 echo "Creating Homework Projects for GUID=${GUID} and USER=${USER}"
 oc new-project ${GUID}-jenkins    --display-name="${GUID} AdvDev Homework Jenkins"
-oc new-project ${GUID}-tasks-dev  --display-name="${GUID} AdvDev Homework Tasks Development"
-oc new-project ${GUID}-tasks-prod --display-name="${GUID} AdvDev Homework Tasks Production"
+oc new-project ${GUID}-parks-dev  --display-name="${GUID} AdvDev Homework Tasks Development"
+oc new-project ${GUID}-parks-prod --display-name="${GUID} AdvDev Homework parks Production"
 
 if [ "$FROM_JENKINS" = "true" ]; then
   oc policy add-role-to-user admin ${USER} -n ${GUID}-jenkins
-  oc policy add-role-to-user admin ${USER} -n ${GUID}-tasks-dev
-  oc policy add-role-to-user admin ${USER} -n ${GUID}-tasks-prod
+  oc policy add-role-to-user admin ${USER} -n ${GUID}-parks-dev
+  oc policy add-role-to-user admin ${USER} -n ${GUID}-parks-prod
 
   oc annotate namespace ${GUID}-jenkins    openshift.io/requester=${USER} --overwrite
-  oc annotate namespace ${GUID}-tasks-dev  openshift.io/requester=${USER} --overwrite
-  oc annotate namespace ${GUID}-tasks-prod openshift.io/requester=${USER} --overwrite
+  oc annotate namespace ${GUID}-parks-dev  openshift.io/requester=${USER} --overwrite
+  oc annotate namespace ${GUID}-parks-prod openshift.io/requester=${USER} --overwrite
 fi
