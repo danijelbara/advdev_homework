@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Create Homework Projects with GUID prefix.
 # When FROM_JENKINS=true then project ownership is set to USER
 # Set FROM_JENKINS=false for testing outside of the Grading Jenkins
