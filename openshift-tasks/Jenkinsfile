@@ -17,7 +17,7 @@ podTemplate(
 node('jenkins-agent-appdev') {
 
  stage('Checkout Source') {
-  git branch: 'dev', url: 'https://github.com/aerdei/adv_dev_hw'
+  git branch: 'dev', url: 'https://github.com/danijelbara/advdev_homework'
  }
 
  def version = getVersionFromPom("openshift-tasks/pom.xml")
