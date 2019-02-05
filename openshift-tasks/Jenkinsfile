@@ -1,0 +1,113 @@
+#!groovy
+podTemplate(
+  label: "jenkins-agent-appdev",
+  cloud: "openshift",
+  inheritFrom: "maven",
+  containers: [
+    containerTemplate(
+      name: "jnlp",
+      image: "docker-registry.default.svc:5000/0691-jenkins/jenkins-agent-appdev",
+      resourceRequestMemory: "1Gi",
+      resourceLimitMemory: "2Gi",
+      resourceRequestCpu: "1",
+      resourceLimitCpu: "2"
+    )
+  ]
+) {
+node('jenkins-agent-appdev') {
+
+ stage('Checkout Source') {
+  git branch: 'dev', url: 'https://github.com/aerdei/adv_dev_hw'
+ }
+
+ def version = getVersionFromPom("openshift-tasks/pom.xml")
+
+ def devTag = "${version}-${BUILD_NUMBER}"
+ def prodTag = "${version}"
+
+ stage('Build war') {
+  dir("openshift-tasks") {
+   sh 'mvn -s ../nexus_settings.xml package -DskipTests'
+  }
+ }
+
+ stage('Unit Tests') {
+  dir("openshift-tasks") {
+   sh 'mvn -s ../nexus_settings.xml test'
+  }
+ }
+
+ stage('Code Analysis') {
+  dir("openshift-tasks") {
+   sh 'mvn sonar:sonar -s ../nexus_settings.xml -Dsonar.host.url=http://sonarqube.gpte-hw-cicd.svc.cluster.local:9000'
+  }
+ }
+ 
+ stage('Publish to Nexus') {
+  dir("openshift-tasks") {
+   sh 'mvn -s ../nexus_settings.xml deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::http://nexus3.gpte-hw-cicd.svc.cluster.local:8081/repository/releases'
+  }
+ }
+ 
+ stage('Start OpenShift S2I build') {
+  withEnv(["version=${version}"]) {
+   sh 'oc start-build tasks -n 0691-tasks-dev -F --from-file=http://nexus3.gpte-hw-cicd.svc.cluster.local:8081/repository/releases/org/jboss/quickstarts/eap/tasks/${version}/tasks-${version}.war'
+  }
+ }
+ 
+  stage('Tag image') {
+   withEnv(["devTag=${devTag}"]){
+    sh 'oc tag 0691-tasks-dev/tasks:latest 0691-tasks-dev/tasks:${devTag}'
+   }
+  }
+ 
+ stage('Copy image to registry') {
+  sh 'oc whoami -t > result'                                                                                                                                                                                     
+  def token = readFile('result').trim() 
+  withEnv(["devTag=${devTag}"]){
+   sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds=openshift:${token} --dest-creds=admin:redhat docker://docker-registry.default.svc.cluster.local:5000/0691-tasks-dev/tasks:${devTag} docker://nexus-registry.gpte-hw-cicd.svc.cluster.local:5000/tasks:${devTag}" 
+  }
+ }
+
+  stage('Deploy to dev') {
+  withEnv(["devTag=${devTag}","prodTag=${prodTag}"]){
+     sh 'oc set env dc/tasks VERSION="${devTag} (tasks-dev)" -n 0691-tasks-dev'
+     sh 'oc set image dc/tasks tasks=0691-tasks-dev/tasks:${devTag} --source=imagestreamtag -n 0691-tasks-dev'
+     sh 'oc rollout latest dc/tasks -n 0691-tasks-dev'
+     sh 'oc tag tasks:${devTag} tasks:${prodTag} -n 0691-tasks-dev'
+  }
+ }
+
+sh "oc get route tasks --template='{{.spec.to.name}}' -n 0691-tasks-prod > activeApp"
+def activeApp = readFile('activeApp').trim()
+def destApp = ""
+if (activeApp == "tasks-blue") {
+   destApp   = "tasks-green"
+  }
+else {
+   destApp   = "tasks-blue"
+  }
+  stage('Blue/Green Production Deployment') {
+    withEnv(["destApp=${destApp}","prodTag=${prodTag}"]){
+      sh 'oc set env dc/${destApp} VERSION="${prodTag} ${destApp}" -n 0691-tasks-prod'
+      sh "oc set image dc/${destApp} ${destApp}=docker-registry.default.svc:5000/0691-tasks-dev/tasks:${prodTag} -n 0691-tasks-prod"
+      sh "oc rollout latest dc/${destApp} -n 0691-tasks-prod"
+  }
+ }
+
+  stage('Switch over to new Version') {
+     withEnv(["destApp=${destApp}"]){
+      echo "Switching Production application to ${destApp}."
+      sh "oc patch route/tasks -n 0691-tasks-prod -p \'{\"spec\":{\"to\":{\"name\":\"${destApp}\"}}}\' -n 0691-tasks-prod"
+  }
+  }
+}
+}
+
+// Convenience Functions to read variables from the pom.xml
+// Do not change anything below this line.
+// --------------------------------------------------------
+def getVersionFromPom(pom) {
+ def matcher = readFile(pom) =~ '<version>(.+)</version>'
+ matcher ? matcher[0][1] : null
+}
